@@ -35,7 +35,9 @@ jobs:
 
       - name: Upload screenshot
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: screenshot
           path: page.png
+          retention-days: 5 # Keep screenshots for 5 days
+          if-no-files-found: warn # Warn but don't fail if screenshot isn't created
