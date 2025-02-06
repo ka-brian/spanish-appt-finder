@@ -16,27 +16,37 @@ def check_website():
     
     # Set up Chrome options for headless mode
     chrome_options = Options()
-    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--headless=new')  # Using newer headless mode
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument('--window-size=1920,1080')  # Set a standard window size
+    chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')  # Add a real user agent
     chrome_options.binary_location = '/usr/bin/google-chrome'
     
     driver = None
     try:
-        # Initialize the driver with webdriver_manager
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
         
         print(f"[{datetime.now()}] Accessing {url}")
-        
-        # Load the page
         driver.get(url)
         
-        # Wait for 10 seconds to let everything load
-        time.sleep(10)
+        # Wait for body to contain more than just empty content
+        try:
+            WebDriverWait(driver, 20).until(
+                lambda x: len(x.find_element(By.TAG_NAME, "body").get_attribute("innerHTML").strip()) > 50
+            )
+        except Exception as e:
+            print(f"Timeout waiting for content to load: {e}")
+        
+        # Additional wait to ensure dynamic content loads
+        time.sleep(5)
         
         # Get the page source after JavaScript has rendered
         page_content = driver.page_source
+        
+        print(f"Final page title: {driver.title}")
+        print(f"Page content length: {len(page_content)}")
         
         if search_text.lower() in page_content.lower():
             print(f"[{datetime.now()}] Found text: {search_text}")
@@ -45,19 +55,18 @@ def check_website():
                     json={"content": f"Found text: {search_text} on {url}"})
         else:
             print(f"[{datetime.now()}] Text not found")
-            print("Page content length:", len(page_content))
             print("First 1000 characters:", page_content[:1000])
             
     except Exception as e:
         print(f"Error: {e}")
-        print(f"Chrome binary location: {chrome_options.binary_location}")
-        # Print if Chrome exists
-        if os.path.exists('/usr/bin/google-chrome'):
-            print("Chrome binary exists at /usr/bin/google-chrome")
-        else:
-            print("Chrome binary not found at /usr/bin/google-chrome")
     finally:
         if driver is not None:
+            try:
+                # Take a screenshot before quitting
+                driver.save_screenshot("page.png")
+                print("Screenshot saved")
+            except Exception as e:
+                print(f"Screenshot error: {e}")
             driver.quit()
 
 if __name__ == "__main__":

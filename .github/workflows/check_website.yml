@@ -2,8 +2,8 @@ name: Check Website Daily
 
 on:
   schedule:
-    - cron: "0 */6 * * *" # Runs every 6 hours
-  workflow_dispatch: # Allows manual triggers
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
 
 jobs:
   check:
@@ -30,4 +30,12 @@ jobs:
         env:
           WEBSITE_URL: ${{ secrets.WEBSITE_URL }}
           SEARCH_TEXT: ${{ secrets.SEARCH_TEXT }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: python check_website.py
+
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: screenshot
+          path: page.png
