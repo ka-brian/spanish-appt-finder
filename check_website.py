@@ -8,14 +8,13 @@ from selenium.webdriver.support import expected_conditions as EC
 import os
 from datetime import datetime
 import time
-import requests
 
 def check_website():
     # initial_url = "https://www.citaconsular.es/"  # Or whatever your initial URL is
-    initial_url = os.environ["INITIAL_URL"]
+    # initial_url = os.environ["INITIAL_URL"]
     search_text = os.environ['SEARCH_TEXT']
     # url = 'https://www.citaconsular.es/es/hosteds/widgetdefault/2533f04b1d3e818b66f175afc9c24cf63/#services'
-    # initial_url = "https://www.exteriores.gob.es/Consulados/miami/es/ServiciosConsulares/Paginas/Ley-de-Memoria-Democr%C3%A1tica-supuesto-1A.aspx"
+    initial_url = "https://www.exteriores.gob.es/Consulados/miami/es/ServiciosConsulares/Paginas/Ley-de-Memoria-Democr%C3%A1tica-supuesto-1A.aspx"
     # search_text = 'disponibles'
 
 
