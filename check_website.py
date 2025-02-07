@@ -16,30 +16,38 @@ from email.mime.image import MIMEImage
 def send_email_notification(found_text, screenshot_path=None):
     sender_email = os.environ.get('EMAIL_SENDER')
     sender_password = os.environ.get('EMAIL_PASSWORD')
-    recipient_emails = os.environ.get('EMAIL_RECIPIENTS', '').split(',')    
-
-    msg = MIMEMultipart()
+    recipient_emails = os.environ.get('EMAIL_RECIPIENTS', '').split(',')
+    
+    # Create multipart message
+    msg = MIMEMultipart('related')
     msg['From'] = sender_email
-    msg['To'] = ', '.join(recipient_emails)
-
+    # Send to each recipient individually to avoid Gmail's group sending limitations
+    msg['To'] = recipient_emails[0]  # Primary recipient
+    msg['Bcc'] = ', '.join(recipient_emails[1:]) if len(recipient_emails) > 1 else ''  # Other recipients as BCC
+    
     if not found_text:
-        msg['Subject'] = "🎉 Alert: Spanish Consulate Appointments may be available!"
-        body = f"The text '{os.environ.get('SEARCH_TEXT')}' was not found on the website at {datetime.now()}. This indicates appointments may be available. Check here to confirm {os.environ.get('INITIAL_URL')}\n\nPlease see the attached screenshot for verification."
+        msg['Subject'] = "Alert: Spanish Consulate Appointments may be available!"  # Removed emoji to avoid encoding issues
+        body = f"The text 'No hay horas disponibles' was not found on the website at {datetime.now()}. This indicates appointments may be available.\n\nPlease check the website to confirm: {os.environ.get('INITIAL_URL')}\n\nA screenshot is attached for verification."
     else:
         msg['Subject'] = "Website Check Update"
-        body = f"Check completed at {datetime.now()}. The target text '{os.environ.get('SEARCH_TEXT')}' was found. This indicates appointments are not likely available.\n\nPlease see the attached screenshot for verification."
+        body = f"Check completed at {datetime.now()}. The text 'No hay horas disponibles' was found. This indicates appointments are not likely available.\n\nA screenshot is attached for verification."
     
-    msg.attach(MIMEText(body, 'plain'))
+    # Create the HTML and plain text parts
+    text_part = MIMEText(body, 'plain')
+    msg.attach(text_part)
     
     # Attach screenshot if available
     if screenshot_path and os.path.exists(screenshot_path):
-        with open(screenshot_path, 'rb') as f:
-            img = MIMEImage(f.read())
-            img.add_header('Content-Disposition', 'attachment', filename="appointment_page.png")
-            # Add the image inline in the email body
-            img.add_header('Content-ID', '<appointment_screenshot>')
-            msg.attach(img)
+        try:
+            with open(screenshot_path, 'rb') as f:
+                img_data = f.read()
+                img = MIMEImage(img_data)
+                img.add_header('Content-Disposition', 'attachment', filename='appointment_status.png')
+                msg.attach(img)
+        except Exception as e:
+            print(f"Error attaching screenshot: {e}")
     
+    # Send the email
     try:
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.starttls()
@@ -48,6 +56,9 @@ def send_email_notification(found_text, screenshot_path=None):
             print(f"Email notification sent successfully to {len(recipient_emails)} recipients")
     except Exception as e:
         print(f"Failed to send email: {e}")
+        # Print more detailed error information
+        import traceback
+        traceback.print_exc()
 
 def capture_full_page_screenshot(driver, path):
     try:
