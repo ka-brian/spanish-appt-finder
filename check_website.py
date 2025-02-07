@@ -182,22 +182,32 @@ def check_website():
         print(f"Final page title: {driver.title}")
         print(f"Page content: {len(page_content)}")
         
+        text_found = False
         if search_text.lower() in page_content.lower():
             print(f"[{datetime.now()}] Found text: {search_text}")
+            text_found = True
         else:
             print(f"[{datetime.now()}] Text not found")
-            print("First 1000 characters:", page_content)
+            print("First 1000 characters:", page_content[:1000])
             
     except Exception as e:
         print(f"Error: {e}")
     finally:
+        screenshot_path = None
         if driver is not None:
             try:
-                driver.save_screenshot("page.png")
+                screenshot_path = "page.png"
+                driver.save_screenshot(screenshot_path)
                 print("Screenshot saved")
             except Exception as e:
                 print(f"Screenshot error: {e}")
             driver.quit()
+        
+        # Send email notification
+        try:
+            send_email_notification(text_found, screenshot_path)
+        except Exception as e:
+            print(f"Error sending email notification: {e}")
 
 if __name__ == "__main__":
     check_website()
