@@ -33,7 +33,7 @@ jobs:
           INITIAL_URL: ${{ secrets.INITIAL_URL}}
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.GOOGLE_APP_PASSWORD }}
-          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+          EMAIL_RECIPIENTS: ${{ secrets.EMAIL_RECIPIENTS }}
         run: python check_website.py
 
       - name: Upload page content
