@@ -8,6 +8,47 @@ from selenium.webdriver.support import expected_conditions as EC
 import os
 from datetime import datetime
 import time
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.image import MIMEImage
+
+def send_email_notification(found_text, screenshot_path=None):
+    sender_email = os.environ.get('EMAIL_SENDER')
+    sender_password = os.environ.get('EMAIL_PASSWORD')
+    recipient_email = os.environ.get('EMAIL_RECIPIENT')
+    
+    # Create the email message
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = recipient_email
+    
+    if found_text:
+        msg['Subject'] = "🎉 Alert: Target Text Found!"
+        body = f"The text '{os.environ.get('SEARCH_TEXT')}' was found on the website at {datetime.now()}"
+    else:
+        msg['Subject'] = "Website Check Update"
+        body = f"Check completed at {datetime.now()}. The target text was not found."
+    
+    msg.attach(MIMEText(body, 'plain'))
+    
+    # Attach screenshot if available
+    if screenshot_path and os.path.exists(screenshot_path):
+        with open(screenshot_path, 'rb') as f:
+            img = MIMEImage(f.read())
+            img.add_header('Content-Disposition', 'attachment', filename="screenshot.png")
+            msg.attach(img)
+    
+    # Send the email
+    try:
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+            print("Email notification sent successfully")
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
 
 def check_website():
     search_text = "No hay horas disponibles."

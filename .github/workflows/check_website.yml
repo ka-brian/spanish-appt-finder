@@ -30,7 +30,10 @@ jobs:
         env:
           WEBSITE_URL: ${{ secrets.WEBSITE_URL }}
           SEARCH_TEXT: ${{ secrets.SEARCH_TEXT }}
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          INITIAL_URL: ${{ secrets.INITIAL_URL}}
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.GOOGLE_APP_PASSWORD }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: python check_website.py
 
       - name: Upload page content
