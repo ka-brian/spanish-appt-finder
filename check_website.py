@@ -10,12 +10,8 @@ from datetime import datetime
 import time
 
 def check_website():
-    # initial_url = "https://www.citaconsular.es/"  # Or whatever your initial URL is
-    # initial_url = os.environ["INITIAL_URL"]
-    search_text = os.environ['SEARCH_TEXT']
-    # url = 'https://www.citaconsular.es/es/hosteds/widgetdefault/2533f04b1d3e818b66f175afc9c24cf63/#services'
+    search_text = "No hay horas disponibles."
     initial_url = "https://www.exteriores.gob.es/Consulados/miami/es/ServiciosConsulares/Paginas/Ley-de-Memoria-Democr%C3%A1tica-supuesto-1A.aspx"
-    # search_text = 'disponibles'
 
 
     chrome_options = Options()
@@ -143,7 +139,7 @@ def check_website():
         page_content = driver.page_source
         
         print(f"Final page title: {driver.title}")
-        print(f"Page content: {page_content}")
+        print(f"Page content: {len(page_content)}")
         
         if search_text.lower() in page_content.lower():
             print(f"[{datetime.now()}] Found text: {search_text}")
