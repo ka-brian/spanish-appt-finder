@@ -23,9 +23,9 @@ def send_email_notification(found_text, screenshot_path=None):
     msg['From'] = sender_email
     msg['To'] = recipient_email
     
-    if found_text:
+    if not found_text:
         msg['Subject'] = "🎉 Alert: Spanish Consulate Appointments may be available!"
-        body = f"The text '{os.environ.get('SEARCH_TEXT')}' was not found on the website at {datetime.now()}. This indicates appointments may be available."
+        body = f"The text '{os.environ.get('SEARCH_TEXT')}' was not found on the website at {datetime.now()}. This indicates appointments may be available. Check here to confirm {os.environ.get("INITIAL_URL")}"
     else:
         msg['Subject'] = "Website Check Update"
         body = f"Check completed at {datetime.now()}. The target text '{os.environ.get('SEARCH_TEXT')}' was not found. This indicates appointments are not likely found."
