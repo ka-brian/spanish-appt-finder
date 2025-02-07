@@ -8,12 +8,11 @@ from selenium.webdriver.support import expected_conditions as EC
 import os
 from datetime import datetime
 import time
-import requests
 
 def check_website():
     url = os.environ['WEBSITE_URL']
     search_text = os.environ['SEARCH_TEXT']
-    
+
     chrome_options = Options()
     chrome_options.add_argument('--headless=new')
     chrome_options.add_argument('--no-sandbox')
@@ -21,6 +20,11 @@ def check_website():
     chrome_options.add_argument('--window-size=1920,1080')
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
     chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+    # Add these options to handle alerts
+    chrome_options.add_experimental_option("prefs", {
+        "profile.default_content_setting_values.notifications": 2,
+        "profile.default_content_settings.popups": 0
+    })
     chrome_options.binary_location = '/usr/bin/google-chrome'
     
     driver = None
@@ -31,19 +35,49 @@ def check_website():
         print(f"[{datetime.now()}] Accessing {url}")
         driver.get(url)
         
-        # Wait for alert and accept it
+        # Handle JavaScript alert using JavaScript executor
         try:
-            print("Waiting for alert...")
-            WebDriverWait(driver, 10).until(EC.alert_is_present())
-            alert = driver.switch_to.alert
-            print(f"Alert text: {alert.text}")
-            alert.accept()
-            print("Alert accepted")
+            print("Attempting to handle JavaScript alert...")
+            driver.execute_script("window.onbeforeunload = null;")
+            driver.execute_script("window.alert = function() {};")
+            driver.execute_script("window.confirm = function() {return true;};")
+            time.sleep(2)  # Brief pause to let JS execute
         except Exception as e:
-            print(f"Alert handling error: {e}")
+            print(f"JavaScript alert handling error: {e}")
         
-        # Wait for content after alert
-        time.sleep(5)  # Give page time to load after alert
+        # Look for and click the continue button (try multiple possible selectors)
+        try:
+            # Wait for any of these possible continue button variations
+            continue_button = None
+            possible_selectors = [
+                "//button[contains(text(), 'Continue')]",
+                "//input[@value='Continue']",
+                "//a[contains(text(), 'Continue')]",
+                "//button[contains(text(), 'continue')]",
+                "//input[@type='submit']"
+            ]
+            
+            for selector in possible_selectors:
+                try:
+                    continue_button = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.XPATH, selector))
+                    )
+                    print(f"Found continue button using selector: {selector}")
+                    break
+                except:
+                    continue
+            
+            if continue_button:
+                continue_button.click()
+                print("Clicked continue button")
+                time.sleep(3)  # Wait for page to load after clicking
+        except Exception as e:
+            print(f"Continue button handling error: {e}")
+        
+        # Wait for the page content to load
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.TAG_NAME, "body"))
+        )
         
         # Get the page source
         page_content = driver.page_source
@@ -53,9 +87,6 @@ def check_website():
         
         if search_text.lower() in page_content.lower():
             print(f"[{datetime.now()}] Found text: {search_text}")
-            if 'DISCORD_WEBHOOK' in os.environ:
-                requests.post(os.environ['DISCORD_WEBHOOK'], 
-                    json={"content": f"Found text: {search_text} on {url}"})
         else:
             print(f"[{datetime.now()}] Text not found")
             print("First 1000 characters:", page_content[:1000])
