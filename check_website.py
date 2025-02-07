@@ -16,19 +16,18 @@ from email.mime.image import MIMEImage
 def send_email_notification(found_text, screenshot_path=None):
     sender_email = os.environ.get('EMAIL_SENDER')
     sender_password = os.environ.get('EMAIL_PASSWORD')
-    recipient_email = os.environ.get('EMAIL_RECIPIENT')
-    
-    # Create the email message
+    recipient_emails = os.environ.get('EMAIL_RECIPIENTS', '').split(',')    
+
     msg = MIMEMultipart()
     msg['From'] = sender_email
-    msg['To'] = recipient_email
-    
+    msg['To'] = ', '.join(recipient_emails)
+
     if not found_text:
         msg['Subject'] = "🎉 Alert: Spanish Consulate Appointments may be available!"
-        body = f"The text '{os.environ.get('SEARCH_TEXT')}' was not found on the website at {datetime.now()}. This indicates appointments may be available. Check here to confirm {os.environ.get("INITIAL_URL")}"
+        body = f"The text '{os.environ.get('SEARCH_TEXT')}' was not found on the website at {datetime.now()}. This indicates appointments may be available. Check here to confirm {os.environ.get('INITIAL_URL')}\n\nPlease see the attached screenshot for verification."
     else:
         msg['Subject'] = "Website Check Update"
-        body = f"Check completed at {datetime.now()}. The target text '{os.environ.get('SEARCH_TEXT')}' was not found. This indicates appointments are not likely found."
+        body = f"Check completed at {datetime.now()}. The target text '{os.environ.get('SEARCH_TEXT')}' was found. This indicates appointments are not likely available.\n\nPlease see the attached screenshot for verification."
     
     msg.attach(MIMEText(body, 'plain'))
     
@@ -36,24 +35,38 @@ def send_email_notification(found_text, screenshot_path=None):
     if screenshot_path and os.path.exists(screenshot_path):
         with open(screenshot_path, 'rb') as f:
             img = MIMEImage(f.read())
-            img.add_header('Content-Disposition', 'attachment', filename="screenshot.png")
+            img.add_header('Content-Disposition', 'attachment', filename="appointment_page.png")
+            # Add the image inline in the email body
+            img.add_header('Content-ID', '<appointment_screenshot>')
             msg.attach(img)
     
-    # Send the email
     try:
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.starttls()
             server.login(sender_email, sender_password)
             server.send_message(msg)
-            print("Email notification sent successfully")
+            print(f"Email notification sent successfully to {len(recipient_emails)} recipients")
     except Exception as e:
         print(f"Failed to send email: {e}")
 
+def capture_full_page_screenshot(driver, path):
+    try:
+        # Get the total height of the page
+        total_height = driver.execute_script("return document.body.scrollHeight")
+        # Set window size to capture everything
+        driver.set_window_size(1920, total_height)
+        time.sleep(1)  # Wait for any dynamic content to load
+        # Take screenshot
+        driver.save_screenshot(path)
+        print(f"Full page screenshot saved to {path}")
+        return True
+    except Exception as e:
+        print(f"Error capturing full page screenshot: {e}")
+        return False
 
 def check_website():
     search_text = "No hay horas disponibles."
     initial_url = "https://www.exteriores.gob.es/Consulados/miami/es/ServiciosConsulares/Paginas/Ley-de-Memoria-Democr%C3%A1tica-supuesto-1A.aspx"
-
 
     chrome_options = Options()
     chrome_options.add_argument('--headless=new')
@@ -73,21 +86,19 @@ def check_website():
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
         
-        # Step 1: Navigate to initial page
         print(f"[{datetime.now()}] Accessing initial page: {initial_url}")
         driver.get(initial_url)
-        time.sleep(3)  # Wait for page to load
+        time.sleep(3)
         
-        # Step 2: Find and click the link to the target page
         try:
             print("Looking for link to target page...")
             possible_link_selectors = [
-    "//a[.//strong[contains(text(), 'ELEGIR FECHA Y HORA')]]",
-    "//a[contains(., 'ELEGIR FECHA Y HORA')]",
-    "//strong[contains(text(), 'ELEGIR FECHA Y HORA')]/parent::a",
-    "//a[normalize-space()='ELEGIR FECHA Y HORA']",
-    # Case insensitive version just in case
-    "//a[translate(.,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='elegir fecha y hora']"            ]
+                "//a[.//strong[contains(text(), 'ELEGIR FECHA Y HORA')]]",
+                "//a[contains(., 'ELEGIR FECHA Y HORA')]",
+                "//strong[contains(text(), 'ELEGIR FECHA Y HORA')]/parent::a",
+                "//a[normalize-space()='ELEGIR FECHA Y HORA']",
+                "//a[translate(.,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')='elegir fecha y hora']"
+            ]
             
             target_link = None
             for selector in possible_link_selectors:
@@ -103,15 +114,14 @@ def check_website():
             if target_link:
                 print("Clicking target link...")
                 target_link.click()
-                time.sleep(3)  # Wait for page load after click
+                time.sleep(3)
             else:
                 print("Could not find target link")
         except Exception as e:
             print(f"Error finding/clicking target link: {e}")
         
-        # Handle JavaScript alert using JavaScript executor
         try:
-            print("Attempting to handle JavaScript alert...")
+            print("Handling JavaScript alerts...")
             driver.execute_script("window.onbeforeunload = null;")
             driver.execute_script("window.alert = function() {};")
             driver.execute_script("window.confirm = function() {return true;};")
@@ -119,7 +129,6 @@ def check_website():
         except Exception as e:
             print(f"JavaScript alert handling error: {e}")
         
-        # Look for and click the continue button
         try:
             continue_button = None
             possible_selectors = [
@@ -128,7 +137,7 @@ def check_website():
                 "//a[contains(text(), 'Continue')]",
                 "//button[contains(text(), 'continue')]",
                 "//input[@type='submit']",
-                "//button[contains(text(), 'Continuar')]",  # Added Spanish version
+                "//button[contains(text(), 'Continuar')]",
                 "//input[@value='Continuar']"
             ]
             
@@ -151,7 +160,6 @@ def check_website():
         
         try:
             print("Waiting for loading indicator to disappear...")
-            # Try multiple possible loading indicator selectors
             loading_selectors = [
                 "//div[contains(@class, 'loading')]",
                 "//div[contains(@class, 'spinner')]",
@@ -170,17 +178,15 @@ def check_website():
                 except:
                     continue
             
-            # Add a small additional wait to ensure everything is fully loaded
             time.sleep(2)
             
         except Exception as e:
             print(f"Error waiting for loading indicator: {e}")
         
-        # Get the page source
         page_content = driver.page_source
         
         print(f"Final page title: {driver.title}")
-        print(f"Page content: {len(page_content)}")
+        print(f"Page content length: {len(page_content)}")
         
         text_found = False
         if search_text.lower() in page_content.lower():
@@ -190,24 +196,19 @@ def check_website():
             print(f"[{datetime.now()}] Text not found")
             print("First 1000 characters:", page_content[:1000])
             
+        # Take a full page screenshot after all interactions are complete
+        screenshot_path = "appointment_page.png"
+        capture_full_page_screenshot(driver, screenshot_path)
+            
     except Exception as e:
         print(f"Error: {e}")
     finally:
-        screenshot_path = None
         if driver is not None:
             try:
-                screenshot_path = "page.png"
-                driver.save_screenshot(screenshot_path)
-                print("Screenshot saved")
+                send_email_notification(text_found, screenshot_path)
             except Exception as e:
-                print(f"Screenshot error: {e}")
+                print(f"Error sending email notification: {e}")
             driver.quit()
-        
-        # Send email notification
-        try:
-            send_email_notification(text_found, screenshot_path)
-        except Exception as e:
-            print(f"Error sending email notification: {e}")
 
 if __name__ == "__main__":
     check_website()
