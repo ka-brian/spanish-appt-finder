@@ -193,6 +193,13 @@ def check_website():
             
         except Exception as e:
             print(f"Error waiting for loading indicator: {e}")
+
+        print("Waiting for page to stabilize...")
+        time.sleep(10)  # Increased delay to 10 seconds
+        
+        # Scroll to top of page to ensure consistent screenshot
+        driver.execute_script("window.scrollTo(0, 0);")
+        time.sleep(2)  # Short delay after scrolling
         
         page_content = driver.page_source
         
